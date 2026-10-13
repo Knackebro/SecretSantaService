@@ -38,7 +38,17 @@ styles.css
 config.js      Supabase project URL + anon key, and the list of names
 db/schema.sql  tables, RLS policies, column grants, run_draw, draw_done
 db/seed.sql    links the auth users to participant rows, sets the admin
+
+db/test/harness.sql   checks the schema against a throwaway Postgres
 ```
+
+`db/test/harness.sql` is for whoever changes the database, not for the
+organizer. It applies `db/schema.sql` and `db/seed.sql` to a scratch database
+and checks the draw rules and the access rules as a signed-in participant — it
+prints counts and true/false only, never a pair. **It deletes from both tables,
+so it must never be pointed at the real project.** It refuses to start if it
+finds participants already there, and the run instructions are in the file's
+header comment.
 
 The anon key in `config.js` is committed on purpose. It is designed to be
 published in a web page — it names the project and nothing more. The **service
