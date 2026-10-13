@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Secret Santa</title>
+  <!-- Relative paths only. The site is served from a sub-path
+       (knackebro.github.io/SecretSantaService/), so "/styles.css" would
+       resolve to the domain root and 404. -->
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<main>
+  <h1>Secret Santa</h1>
+
+  <p id="boot" class="muted">Loading…</p>
+
+  <p id="misconfigured" class="error" hidden>
+    This site has not been pointed at its database yet. The organizer needs to
+    fill in <code>config.js</code>.
+  </p>
+
+  <!-- 1. Sign in -->
+  <section id="view-signin" hidden>
+    <form id="signin-form" class="card">
+      <h2>Sign in</h2>
+      <label for="who">Who are you?</label>
+      <select id="who" required>
+        <option value="" selected disabled>Choose your name</option>
+      </select>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Sign in</button>
+      <p id="signin-error" class="error" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <!-- 2, 3 and 4 all live behind a signed-in session -->
+  <section id="view-app" hidden>
+    <p id="greeting" class="muted"></p>
+
+    <!-- 2. My Secret Santa -->
+    <section class="card">
+      <h2>My Secret Santa</h2>
+      <p id="giftee"></p>
+      <div id="giftee-wishlist-wrap" hidden>
+        <h3 id="giftee-wishlist-heading"></h3>
+        <pre id="giftee-wishlist"></pre>
+      </div>
+    </section>
+
+    <!-- 3. My wishlist -->
+    <section class="card">
+      <h2>My wishlist</h2>
+      <p class="muted">Whatever you write here is what your Secret Santa sees.</p>
+      <form id="wishlist-form">
+        <label class="visually-hidden" for="wishlist">My wishlist</label>
+        <textarea id="wishlist" rows="8" placeholder="Books, socks, a very large cheese…"></textarea>
+        <div class="row">
+          <button type="submit" id="wishlist-save">Save</button>
+          <span id="wishlist-status" class="status" role="status"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- 4. Admin. Rendered only when the signed-in participant's own row has
+         is_admin true, so the other six never see it. There is deliberately no
+         participant list, no pair list and no "who has written a wishlist yet"
+         view: any of those would leak the draw to the one person who must not
+         see it. -->
+    <section class="card" id="view-admin" hidden>
+      <h2>Admin</h2>
+      <p id="admin-state"></p>
+      <div class="row">
+        <button type="button" id="draw-button" hidden>Run the draw</button>
+        <button type="button" id="redraw-button" class="danger" hidden>Redraw</button>
+      </div>
+      <p id="draw-result" class="status" role="status"></p>
+      <p id="draw-error" class="error" role="alert" hidden></p>
+    </section>
+
+    <button type="button" id="signout" class="plain">Sign out</button>
+  </section>
+</main>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
