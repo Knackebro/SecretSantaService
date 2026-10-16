@@ -228,6 +228,96 @@ el("wishlist-form").addEventListener("submit", async (event) => {
   status.classList.toggle("bad", Boolean(error));
 });
 
+// --- My password -----------------------------------------------------------
+
+// The two inputs are the only place a typed password ever lives: it is never
+// logged, never put in a variable that outlives the submit, and both fields are
+// cleared the moment Supabase accepts it.
+//
+// No `me` guard here, unlike the wishlist. Changing a password needs the auth
+// session and nothing else, so this still works for somebody whose participant
+// row is missing or whose database read failed.
+
+// An expired or revoked session is the one failure where Supabase's own wording
+// is about tokens rather than about anything a participant can do. GoTrue
+// answers 401 for a missing token and 403 for a bad one; the codes are listed
+// as well because they are the documented names for those two cases.
+const sessionIsDead = (error) =>
+  error.status === 401 ||
+  error.status === 403 ||
+  ["bad_jwt", "no_authorization", "session_not_found"].includes(error.code);
+
+// Clear a stale "Password updated." or complaint as soon as either field is
+// edited again, the same way the wishlist clears its "Saved."
+for (const id of ["new-password", "new-password-repeat"]) {
+  el(id).addEventListener("input", () => {
+    setText(el("password-status"), "");
+    show(el("password-error"), false);
+  });
+}
+
+el("password-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const status = el("password-status");
+  const error = el("password-error");
+  const button = el("password-save");
+  const first = el("new-password");
+  const second = el("new-password-repeat");
+
+  setText(status, "");
+  show(error, false);
+
+  const complain = (message) => {
+    setText(error, message);
+    show(error);
+  };
+
+  if (first.value !== second.value) {
+    complain("The two passwords do not match.");
+    return;
+  }
+
+  if (first.value.length < 8) {
+    complain("Please use at least 8 characters.");
+    return;
+  }
+
+  button.disabled = true;
+  setText(status, "Saving…");
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: first.value,
+  });
+
+  setText(status, "");
+  button.disabled = false;
+
+  if (updateError) {
+    if (sessionIsDead(updateError)) {
+      first.value = "";
+      second.value = "";
+      await supabase.auth.signOut();
+      // load() finds no user and puts the sign-in view back up. Setting the
+      // message after it, because load() is what hides this card.
+      await load();
+      setText(el("signin-error"), "Your session has expired — please sign in again.");
+      show(el("signin-error"));
+      return;
+    }
+
+    // Supabase's own message is the clearest thing to show: "New password
+    // should be different from the old password.", "Password should be at
+    // least 6 characters.", and so on are already plain English.
+    complain(updateError.message);
+    return;
+  }
+
+  first.value = "";
+  second.value = "";
+  setText(status, "Password updated. Use it next time you sign in.");
+});
+
 // --- Admin -----------------------------------------------------------------
 
 function renderAdmin(row, drawDone) {

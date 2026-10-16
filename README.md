@@ -1,8 +1,9 @@
 # Secret Santa
 
 A small Secret Santa site for seven people. Everyone signs in, sees the one
-person they are giving a present to and that person's wishlist, and edits their
-own wishlist. One person is the admin and gets a **Run the draw** button.
+person they are giving a present to and that person's wishlist, edits their own
+wishlist and can change their own password. One person is the admin and gets a
+**Run the draw** button.
 
 - Site: <https://knackebro.github.io/SecretSantaService/>
 - Hosting: GitHub Pages, served straight from `main` / `(root)`
@@ -32,8 +33,8 @@ deliberately looking. That last part is discipline, not engineering.
 ## Files
 
 ```
-index.html     sign-in, participant views, admin card
-app.js         auth, load assignment, save wishlist, call run_draw
+index.html     sign-in, participant views, change-password card, admin card
+app.js         auth, load assignment, save wishlist, change password, call run_draw
 styles.css
 config.js      Supabase project URL + anon key, and the list of names
 db/schema.sql  tables, RLS policies, column grants, run_draw, draw_done
@@ -98,7 +99,7 @@ checked so no email is sent:
 | Ellie | `ellie@secretsanta.local` |
 
 Pick a password for each and hand them out directly. The addresses are
-placeholders and not real inboxes — see **Forgotten password** below.
+placeholders and not real inboxes — see **Passwords** below.
 
 Then SQL Editor → paste `db/seed.sql` → Run. It derives each name from the
 address, so there are no user ids to copy by hand. It prints a count at the end:
@@ -126,11 +127,25 @@ this before you tell people to look.
 A draw is all-or-nothing: it either writes a complete valid ring or writes
 nothing. Before the draw, everyone sees "The draw has not happened yet."
 
-## Forgotten password
+## Passwords
 
-**There is no self-service reset.** The addresses are placeholders, so a reset
-email has nowhere to go and the "forgot password" and magic-link flows cannot
-work at all.
+Two different situations, two different answers.
+
+**Someone knows their password and wants a different one.** They do it
+themselves: sign in → **Change my password** on their own page → new password
+twice → **Save**. It takes effect the next time they sign in, they stay signed
+in meanwhile, and nothing is emailed. Minimum eight characters, and Supabase
+refuses a password identical to the current one.
+
+This needs Authentication → Providers → Email → **Secure password change** to
+stay **off** (it is off by default). Turning it on makes Supabase demand a
+one-time code by email for any session older than 24 hours, and these addresses
+receive no email — so the button would simply stop working for most people.
+
+**Someone has forgotten their password.** **There is no self-service reset.**
+The addresses are placeholders, so a reset email has nowhere to go and the
+"forgot password" and magic-link flows cannot work at all. They cannot sign in,
+so they never reach the form above either.
 
 Reset it by hand instead: Supabase dashboard → Authentication → Users → find the
 person → the **⋯** menu on their row → **Reset password** (or **Send magic

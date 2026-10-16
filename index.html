@@ -35,7 +35,7 @@
     </form>
   </section>
 
-  <!-- 2, 3 and 4 all live behind a signed-in session -->
+  <!-- 2, 3, 4 and 5 all live behind a signed-in session -->
   <section id="view-app" hidden>
     <p id="greeting" class="muted"></p>
 
@@ -63,7 +63,28 @@
       </form>
     </section>
 
-    <!-- 4. Admin. Rendered only when the signed-in participant's own row has
+    <!-- 4. Change my password. There is no "current password" field: the
+         session that loaded this page is already proof of who this is. There is
+         deliberately no "forgot my password" link either — the addresses are
+         placeholders that receive no email, so a real lockout is still the
+         organizer's job in the dashboard. -->
+    <section class="card">
+      <h2>Change my password</h2>
+      <p class="muted">You stay signed in here. The new password is for next time.</p>
+      <form id="password-form">
+        <label for="new-password">New password</label>
+        <input id="new-password" type="password" autocomplete="new-password" required>
+        <label for="new-password-repeat">Repeat new password</label>
+        <input id="new-password-repeat" type="password" autocomplete="new-password" required>
+        <div class="row">
+          <button type="submit" id="password-save">Save</button>
+          <span id="password-status" class="status" role="status"></span>
+        </div>
+        <p id="password-error" class="error" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <!-- 5. Admin. Rendered only when the signed-in participant's own row has
          is_admin true, so the other six never see it. There is deliberately no
          participant list, no pair list and no "who has written a wishlist yet"
          view: any of those would leak the draw to the one person who must not
