@@ -12,8 +12,8 @@
 // Fill these two in. Supabase dashboard -> Project Settings -> API.
 // ---------------------------------------------------------------------------
 
-export const SUPABASE_URL = "PASTE_PROJECT_URL_HERE"; // e.g. https://abcdefgh.supabase.co
-export const SUPABASE_ANON_KEY = "PASTE_ANON_KEY_HERE";
+export const SUPABASE_URL = "https://etuawukjlzwviuyybscw.supabase.co"; // e.g. https://abcdefgh.supabase.co
+export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0dWF3dWtqbHp3dml1eXlic2N3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNDg4NTEsImV4cCI6MjEwNzcyNDg1MX0.w6Qc_Cnh-n9BHMXPS7a0StC6urIz4x12gt9Btx2nuzk";
 
 // ---------------------------------------------------------------------------
 // The group. Change these only if the people change.
