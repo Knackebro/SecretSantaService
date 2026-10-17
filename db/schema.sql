@@ -3,7 +3,11 @@
 -- Apply this once to a fresh Supabase project:
 --   Supabase dashboard -> SQL Editor -> paste this whole file -> Run.
 --
--- After this runs, create the 7 auth users (Authentication -> Users -> Add user,
+-- Then apply every file in db/migrations in number order, the same way. They
+-- are the changes made after the first version of this file. A project that is
+-- already running the site needs only the migrations it has not had yet.
+--
+-- After that, create the 7 auth users (Authentication -> Users -> Add user,
 -- "Auto Confirm User" checked) and then apply db/seed.sql.
 --
 -- Everything that keeps the draw secret is in this file. The JavaScript in the

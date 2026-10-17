@@ -35,7 +35,7 @@
     </form>
   </section>
 
-  <!-- 2, 3, 4 and 5 all live behind a signed-in session -->
+  <!-- 2 to 6 all live behind a signed-in session -->
   <section id="view-app" hidden>
     <p id="greeting" class="muted"></p>
 
@@ -46,6 +46,13 @@
       <div id="giftee-wishlist-wrap" hidden>
         <h3 id="giftee-wishlist-heading"></h3>
         <pre id="giftee-wishlist"></pre>
+      </div>
+      <!-- Ideas other people left for your giftee. Shown here because this is
+           the one place in the site that is about that person. No names and no
+           times: the database does not hand this page either. -->
+      <div id="giftee-suggestions-wrap" hidden>
+        <h3 id="giftee-suggestions-heading"></h3>
+        <ul id="giftee-suggestions" class="suggestions"></ul>
       </div>
     </section>
 
@@ -63,7 +70,38 @@
       </form>
     </section>
 
-    <!-- 4. Change my password. There is no "current password" field: the
+    <!-- 4. Suggest a gift for somebody else. The name picker is built from
+         PARTICIPANTS in config.js, not from the database: a participant cannot
+         read anybody's row except their own and their giftee's, so there is no
+         list to read. The site therefore cannot show you that person's
+         wishlist while you type, and cannot tell you what anyone else has
+         already suggested. -->
+    <section class="card" id="view-suggest" hidden>
+      <h2>Suggest a gift for someone</h2>
+      <p class="muted">
+        Pick anyone but yourself. Only that person's Secret Santa sees what you
+        write, and even they are not told who wrote it. That also means you
+        cannot see it again after you save it, so read it over first.
+      </p>
+      <form id="suggest-form">
+        <label for="suggest-who">Who is it for?</label>
+        <select id="suggest-who" required>
+          <option value="" selected disabled>Choose a name</option>
+        </select>
+        <label for="suggest-text">Your idea</label>
+        <textarea id="suggest-text" rows="4" maxlength="500" required
+                  placeholder="He has been talking about a cast iron pan all year."></textarea>
+        <label for="suggest-link">Link (optional)</label>
+        <input id="suggest-link" type="url" maxlength="500" placeholder="https://">
+        <div class="row">
+          <button type="submit" id="suggest-save">Save anonymously</button>
+          <span id="suggest-status" class="status" role="status"></span>
+        </div>
+        <p id="suggest-error" class="error" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <!-- 5. Change my password. There is no "current password" field: the
          session that loaded this page is already proof of who this is. There is
          deliberately no "forgot my password" link either — the addresses are
          placeholders that receive no email, so a real lockout is still the
@@ -84,7 +122,7 @@
       </form>
     </section>
 
-    <!-- 5. Admin. Rendered only when the signed-in participant's own row has
+    <!-- 6. Admin. Rendered only when the signed-in participant's own row has
          is_admin true, so the other six never see it. There is deliberately no
          participant list, no pair list and no "who has written a wishlist yet"
          view: any of those would leak the draw to the one person who must not

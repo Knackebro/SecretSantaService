@@ -5,12 +5,15 @@
 // the checks below would make the page useless but would not reveal one extra
 // row to anybody.
 //
-// Two rules this file keeps:
+// Three rules this file keeps:
 //   - It never reads the assignments table. It does not have to: the
 //     participants policy already returns exactly the caller's own row and
 //     their giftee's row, so "the other row" is the giftee.
 //   - It never logs anything data-bearing. The admin is also a participant, so
 //     a stray console.log of a draw response is a leak.
+//   - It never asks gift_suggestions for every column. submitter_id is not
+//     granted to anybody signed in, so "select *" would fail — and naming the
+//     four readable columns says out loud which ones a participant may see.
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import {
@@ -26,10 +29,18 @@ const show = (node, visible = true) => {
   node.hidden = !visible;
 };
 
-// textContent, never innerHTML: wishlists are free text typed by people.
+// textContent, never innerHTML: wishlists and gift suggestions are free text
+// typed by people.
 const setText = (node, text) => {
   node.textContent = text;
 };
+
+// A suggestion's link ends up in an href, where a javascript: URL would run.
+// The database already refuses anything that does not start with http:// or
+// https:// (see db/migrations/0001-gift-suggestions.sql), so this is a second
+// check rather than the only one.
+const isHttpUrl = (value) =>
+  typeof value === "string" && /^https?:\/\//i.test(value);
 
 // --- Configured yet? -------------------------------------------------------
 
@@ -120,6 +131,15 @@ async function load() {
     .from("participants")
     .select("id, name, wishlist, is_admin");
 
+  // The ideas other people left for the caller's giftee. Again the policy
+  // decides: rows for the giftee and nothing else, so nothing comes back
+  // before the draw. Ordered by id, because the order ideas arrived in is a
+  // hint about who wrote them and created_at is not readable from here.
+  const { data: suggestionRows, error: suggestionsError } = await supabase
+    .from("gift_suggestions")
+    .select("id, recipient_id, suggestion, link")
+    .order("id");
+
   show(el("boot"), false);
   show(el("view-app"));
 
@@ -144,18 +164,18 @@ async function load() {
   }
 
   setText(el("greeting"), `Signed in as ${me.name}.`);
-  renderGiftee(others, drawDone);
+  renderGiftee(others, drawDone, suggestionRows ?? [], Boolean(suggestionsError));
   renderMyWishlist(me);
+  renderSuggestForm(me);
   renderAdmin(me, drawDone);
 }
 
-function renderGiftee(others, drawDone) {
+function renderGiftee(others, drawDone, suggestions, suggestionsFailed) {
   const giftee = el("giftee");
   const wrap = el("giftee-wishlist-wrap");
-  const heading = el("giftee-wishlist-heading");
-  const body = el("giftee-wishlist");
 
   show(wrap, false);
+  show(el("giftee-suggestions-wrap"), false);
 
   if (others.length === 0) {
     setText(
@@ -180,7 +200,15 @@ function renderGiftee(others, drawDone) {
 
   const [them] = others;
   setText(giftee, `You are giving a present to ${them.name}.`);
-  show(wrap);
+  renderGifteeWishlist(them);
+  renderGifteeSuggestions(them, suggestions, suggestionsFailed);
+}
+
+function renderGifteeWishlist(them) {
+  const heading = el("giftee-wishlist-heading");
+  const body = el("giftee-wishlist");
+
+  show(el("giftee-wishlist-wrap"));
 
   if (them.wishlist.trim() === "") {
     setText(heading, `${them.name} has not added a wishlist yet.`);
@@ -192,6 +220,59 @@ function renderGiftee(others, drawDone) {
   setText(heading, `${them.name}'s wishlist`);
   setText(body, them.wishlist);
   show(body);
+}
+
+// What other people suggested for this person. The page shows the text and
+// nothing else: it is not told who wrote any of it, or when.
+function renderGifteeSuggestions(them, suggestions, failed) {
+  const wrap = el("giftee-suggestions-wrap");
+  const heading = el("giftee-suggestions-heading");
+  const list = el("giftee-suggestions");
+
+  list.replaceChildren();
+
+  if (failed) {
+    setText(heading, "Could not load the ideas other people left for them.");
+    show(wrap);
+    return;
+  }
+
+  // The policy already returns only this person's rows. Filtering again here
+  // costs nothing and means a future mistake in that policy shows up as a
+  // missing idea rather than as a note somebody was never meant to read.
+  const theirs = suggestions.filter((row) => row.recipient_id === them.id);
+
+  if (theirs.length === 0) {
+    show(wrap, false);
+    return;
+  }
+
+  setText(
+    heading,
+    theirs.length === 1
+      ? `One anonymous idea for ${them.name}`
+      : `${theirs.length} anonymous ideas for ${them.name}`,
+  );
+
+  for (const row of theirs) {
+    const item = document.createElement("li");
+    const text = document.createElement("p");
+    setText(text, row.suggestion);
+    item.append(text);
+
+    if (isHttpUrl(row.link)) {
+      const link = document.createElement("a");
+      link.href = row.link;
+      link.rel = "noopener noreferrer";
+      link.target = "_blank";
+      setText(link, row.link);
+      item.append(link);
+    }
+
+    list.append(item);
+  }
+
+  show(wrap);
 }
 
 // --- My wishlist -----------------------------------------------------------
@@ -226,6 +307,102 @@ el("wishlist-form").addEventListener("submit", async (event) => {
   button.disabled = false;
   setText(status, error ? "Could not save. Try again." : "Saved.");
   status.classList.toggle("bad", Boolean(error));
+});
+
+// --- Suggesting a gift for somebody else -----------------------------------
+
+// The names come from PARTICIPANTS in config.js, not from the database. A
+// participant can only read their own row and their giftee's, so there is no
+// list of people to read. Rebuilt on every load because it leaves out the
+// signed-in person, and who that is changes with the session.
+function renderSuggestForm(row) {
+  const who = el("suggest-who");
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  setText(placeholder, "Choose a name");
+  who.replaceChildren(placeholder);
+
+  for (const name of PARTICIPANTS) {
+    if (name === row.name) continue;
+    const option = document.createElement("option");
+    option.value = name;
+    setText(option, name);
+    who.append(option);
+  }
+
+  setText(el("suggest-status"), "");
+  show(el("suggest-error"), false);
+  show(el("view-suggest"));
+}
+
+// Clear a stale "Saved." as soon as the form is edited again, the same way the
+// wishlist and the password fields do.
+for (const id of ["suggest-who", "suggest-text", "suggest-link"]) {
+  el(id).addEventListener("input", () => {
+    setText(el("suggest-status"), "");
+    show(el("suggest-error"), false);
+  });
+}
+
+el("suggest-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!me) return;
+
+  const status = el("suggest-status");
+  const error = el("suggest-error");
+  const button = el("suggest-save");
+  const who = el("suggest-who");
+  const text = el("suggest-text");
+  const link = el("suggest-link");
+
+  setText(status, "");
+  show(error, false);
+
+  const complain = (message) => {
+    setText(error, message);
+    show(error);
+  };
+
+  if (who.value === "") {
+    complain("Pick who the idea is for.");
+    return;
+  }
+
+  if (text.value.trim() === "") {
+    complain("Write an idea before you save it.");
+    return;
+  }
+
+  button.disabled = true;
+  setText(status, "Saving…");
+
+  // suggest_gift() returns nothing, and that is the whole result. The row it
+  // writes names the person who wrote it, and nobody signed in may read that
+  // column — including the person who just wrote it. So there is nothing to
+  // render back and no list of "my suggestions" anywhere in this site.
+  const { error: suggestError } = await supabase.rpc("suggest_gift", {
+    p_for_name: who.value,
+    p_suggestion: text.value,
+    p_link: link.value.trim() === "" ? null : link.value.trim(),
+  });
+
+  button.disabled = false;
+  setText(status, "");
+
+  if (suggestError) {
+    // The messages raised by suggest_gift() are already written for a person:
+    // "write something before you save it", "you have already left 5 ideas for
+    // Agneta", and so on.
+    complain(suggestError.message);
+    return;
+  }
+
+  text.value = "";
+  link.value = "";
+  setText(status, `Saved. Only ${who.value}'s Secret Santa will see it.`);
 });
 
 // --- My password -----------------------------------------------------------
